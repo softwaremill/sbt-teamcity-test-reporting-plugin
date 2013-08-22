@@ -2,6 +2,8 @@ name := "sbt-teamcity-test-reporting-plugin"
 
 organization := "com.gu"
 
+scalaVersion := "2.10.2"
+
 sbtPlugin := true
 
 releaseSettings

@@ -1,7 +1,8 @@
 package com.gu
 
 import sbt._
-import org.scalatools.testing.{Event => TEvent, Result => TResult}
+import sbt.testing.{Event => TEvent}
+import org.scalatools.testing.{Result => TResult}
 
 import Keys._
 import java.io.{PrintWriter, StringWriter}
@@ -31,8 +32,8 @@ class TeamCityTestListener extends TestReportListener {
 
   /** called for each test method or equivalent */
   def testEvent(event: TestEvent) {
-    for (e: TEvent <- event.detail) {
-
+    for (sbtEvent: TEvent <- event.detail) {
+      val e = sbtEvent.asInstanceOf[org.scalatools.testing.Event]
       // TC seems to get a bit upset if you start a test while one is already running
       // so a nasty bit of synchronisation here to stop that happening
       synchronized {
