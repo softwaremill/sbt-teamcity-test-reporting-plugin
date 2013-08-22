@@ -1,8 +1,7 @@
 package com.gu
 
 import sbt._
-import sbt.testing.{Event => TEvent}
-import org.scalatools.testing.{Result => TResult}
+import sbt.testing.{Event => TEvent, Status => TStatus}
 
 import Keys._
 import java.io.{PrintWriter, StringWriter}
@@ -32,28 +31,29 @@ class TeamCityTestListener extends TestReportListener {
 
   /** called for each test method or equivalent */
   def testEvent(event: TestEvent) {
-    for (sbtEvent: TEvent <- event.detail) {
-      val e = sbtEvent.asInstanceOf[org.scalatools.testing.Event]
-      // TC seems to get a bit upset if you start a test while one is already running
-      // so a nasty bit of synchronisation here to stop that happening
-      synchronized {
-        // this is a lie: the test has already been executed and started by this point,
-        // but sbt doesn't send an event when test starts
-        teamcityReport("testStarted", "name" -> e.testName)
+    for (e: TEvent <- event.detail) {
+          
+      if (e.selector.isInstanceOf[sbt.testing.TestSelector]) {
+        val selector = e.selector.asInstanceOf[sbt.testing.TestSelector]
+        // TC seems to get a bit upset if you start a test while one is already running
+        // so a nasty bit of synchronisation here to stop that happening
+        synchronized {
+          // this is a lie: the test has already been executed and started by this point,
+          // but sbt doesn't send an event when test starts
+          teamcityReport("testStarted", "name" -> selector.testName)
 
-        e.result match {
-          case TResult.Success => // nothing extra to report
-          case TResult.Error | TResult.Failure =>
-            teamcityReport("testFailed",
-              "name" -> e.testName,
-              "details" -> nicelyFormatException(e.error())
-            )
-          case TResult.Skipped =>
-            teamcityReport("testIgnored", "name" -> e.testName)
+          e.status match {
+            case TStatus.Success => // nothing extra to report
+            case TStatus.Error | TStatus.Failure =>
+              teamcityReport("testFailed",
+                "name" -> selector.testName,
+                "details" -> nicelyFormatException(e.throwable().get)
+              )
+            case TStatus.Skipped | TStatus.Ignored =>
+              teamcityReport("testIgnored", "name" -> selector.testName)
+          }
+          teamcityReport("testFinished", "name" -> selector.testName)
         }
-
-        teamcityReport("testFinished", "name" -> e.testName)
-
       }
     }
   }
